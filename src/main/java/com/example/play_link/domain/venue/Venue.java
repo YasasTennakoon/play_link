@@ -9,11 +9,13 @@ import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import com.example.play_link.domain.venue.enums.VenueStatus;
+import com.example.play_link.domain.venue.enums.VenueApprovalStatus;
 
 @Document(collection = "venues")
 @Data
@@ -46,8 +48,9 @@ public class Venue {
 
     private Rating rating;
 
-    private VenueStatus status;
+    private VenueApprovalStatus venueApprovalStatus;
 
+    @JsonProperty("isActive")  // Force Jackson to use "isActive" instead of "active"
     private boolean isActive;
 
     @CreatedDate
