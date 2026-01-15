@@ -36,7 +36,7 @@ public class VenueService {
         currentVenue.setFacilities(venue.getFacilities());
         currentVenue.setOperatingHours(venue.getOperatingHours());
         currentVenue.setRating(venue.getRating());
-        currentVenue.setStatus(venue.getStatus());
+        currentVenue.setVenueApprovalStatus(venue.getVenueApprovalStatus());
         currentVenue.setActive(venue.isActive());
         return venueRepository.save(currentVenue);
 
