@@ -16,7 +16,7 @@ public class VenueService {
 
     private final VenueRepository venueRepository;
 
-    public List<Venue> allVenues(){
+        public List<Venue> allVenues(){
         return venueRepository.findAll();
     }
 
