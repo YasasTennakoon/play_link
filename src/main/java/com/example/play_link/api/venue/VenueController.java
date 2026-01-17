@@ -1,6 +1,8 @@
 package com.example.play_link.api.venue;
 
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.play_link.application.venue.VenueService;
 import com.example.play_link.domain.venue.Venue;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -22,18 +25,18 @@ public class VenueController {
     private final VenueService venueService;
 
     @GetMapping
-    public List<Venue> getAllVenues(){
-        return venueService.allVenues();
+    public ResponseEntity<List<Venue>> getAllVenues(){
+        return ResponseEntity.ok(venueService.allVenues());
     }
 
     @PostMapping
-    public Venue createVenue(@RequestBody Venue venue){
-        return venueService.addNewVenue(venue);
+    public ResponseEntity<Venue> createVenue(@Valid @RequestBody Venue venue){
+        return ResponseEntity.status(HttpStatus.CREATED).body(venueService.addNewVenue(venue));
     }
 
     @PutMapping("/{venueId}")
-    public Venue updateVenue(@PathVariable String venueId, @RequestBody Venue venue){
-        return venueService.updateVenue(venueId, venue);
+    public ResponseEntity<Venue> updateVenue(@PathVariable String venueId, @Valid @RequestBody Venue venue){
+        return ResponseEntity.ok(venueService.updateVenue(venueId, venue));
     }
     
 }
