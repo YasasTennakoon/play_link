@@ -49,8 +49,6 @@ public class AuthService implements UserDetailsService {
         return new org.springframework.security.core.userdetails.User(
             user.getUserName(),
             user.getPassword(),
-            user.isEnabled(),
-            true, true, true,
             getAuthorities(user)
         );
     }
@@ -87,7 +85,7 @@ public class AuthService implements UserDetailsService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .userRoles(request.getUserRoles())
-                .enabled(true)
+                .enabled(false)
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -113,6 +111,10 @@ public class AuthService implements UserDetailsService {
             throw new IllegalArgumentException("Login request cannot be null");
         }
         
+        // Check if user exists and is enabled before authentication
+        User user = userRepository.findByUserName(request.getUserName())
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid username or password"));
+        
         try {
                  authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -122,15 +124,6 @@ public class AuthService implements UserDetailsService {
         );   
         } catch (BadCredentialsException e) {
             throw new InvalidCredentialsException("Invalid username or password");
-        }
-
-        // If all the validations are passed.
-        User user = userRepository.findByUserName(request.getUserName())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + request.getUserName()));
-
-        // Check if user account is enabled
-        if (!user.isEnabled()) {
-            throw new InvalidCredentialsException("User account is disabled");
         }
 
         // Generate JWT token
