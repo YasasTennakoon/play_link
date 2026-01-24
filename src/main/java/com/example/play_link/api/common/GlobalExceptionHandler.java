@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.example.play_link.api.auth.dto.ErrorResponse;
 import com.example.play_link.application.common.exceptions.InvalidCredentialsException;
 import com.example.play_link.application.common.exceptions.ResourceNotFoundException;
+import com.example.play_link.application.common.exceptions.TokenRefreshException;
 import com.example.play_link.application.common.exceptions.UserAlreadyExistsException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -116,6 +117,21 @@ public class GlobalExceptionHandler {
                 .build();
         
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(TokenRefreshException.class)
+    public ResponseEntity<ErrorResponse> handleTokenRefresh(
+            TokenRefreshException ex, 
+            HttpServletRequest request) {
+        
+        ErrorResponse error = ErrorResponse.builder()
+                .message(ex.getMessage())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+        
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
     @ExceptionHandler(Exception.class)

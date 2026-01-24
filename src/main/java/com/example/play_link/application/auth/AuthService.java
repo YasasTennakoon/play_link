@@ -3,6 +3,7 @@ package com.example.play_link.application.auth;
 import com.example.play_link.api.auth.dto.AuthResponse;
 import com.example.play_link.api.auth.dto.LoginRequest;
 import com.example.play_link.api.auth.dto.RegisterRequest;
+import com.example.play_link.domain.auth.RefreshToken;
 import com.example.play_link.domain.user.User;
 import com.example.play_link.infrastructure.security.JwtUtil;
 import com.example.play_link.infrastructure.user.UserRepository;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 import org.springframework.security.authentication.BadCredentialsException;
 
 import com.example.play_link.application.common.exceptions.InvalidCredentialsException;
+import com.example.play_link.application.common.exceptions.TokenRefreshException;
 import com.example.play_link.application.common.exceptions.UserAlreadyExistsException;
 
 @Service
@@ -33,12 +35,14 @@ public class AuthService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenService refreshTokenService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,JwtUtil jwtUtil,@Lazy AuthenticationManager authenticationManager) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, @Lazy AuthenticationManager authenticationManager, RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
@@ -62,7 +66,7 @@ public class AuthService implements UserDetailsService {
     /*
      User registration method.
      Request: RegisterRequest containing user details.
-     Response: AuthResponse containing JWT token and user info.
+     Note: Refresh token is created but not returned in response - it's set as httpOnly cookie
     */
     public AuthResponse register(RegisterRequest request) {
         if (request == null) {
@@ -90,12 +94,12 @@ public class AuthService implements UserDetailsService {
 
         User savedUser = userRepository.save(user);
 
-        // Generate JWT token
+        // Generate JWT access token
         UserDetails userDetails = loadUserByUsername(savedUser.getUserName());
-        String token = jwtUtil.generateToken(userDetails);
+        String accessToken = jwtUtil.generateToken(userDetails);
 
         return AuthResponse.builder()
-                .token(token)
+                .accessToken(accessToken)
                 .user(savedUser)
                 .build();
     }
@@ -103,7 +107,7 @@ public class AuthService implements UserDetailsService {
     /*
      User login method.
      Request: LoginRequest containing username and password.
-     Response: AuthResponse containing JWT token and user info.
+     Note: Refresh token is created but not returned in response - it's set as httpOnly cookie
     */
     public AuthResponse login(LoginRequest request) {
         // Validate request is not null
@@ -126,13 +130,51 @@ public class AuthService implements UserDetailsService {
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        // Generate JWT token
+        // Generate JWT access token
         UserDetails userDetails = loadUserByUsername(user.getUserName());
-        String token = jwtUtil.generateToken(userDetails);
+        String accessToken = jwtUtil.generateToken(userDetails);
 
         return AuthResponse.builder()
-                .token(token)
+                .accessToken(accessToken)
                 .user(user)
                 .build();
+    }
+
+    /*
+     Refresh access token using refresh token from cookie.
+     Request: Refresh token string from httpOnly cookie.
+     Response: AuthResponse containing new JWT access token.
+    */
+    public AuthResponse refreshAccessToken(String refreshTokenStr) {
+        return refreshTokenService.findByToken(refreshTokenStr)
+                .map(refreshTokenService::verifyExpiration)
+                .map(RefreshToken::getUser)
+                .map(user -> {
+                    UserDetails userDetails = loadUserByUsername(user.getUserName());
+                    String newAccessToken = jwtUtil.generateToken(userDetails);
+                    return AuthResponse.builder()
+                            .accessToken(newAccessToken)
+                            .user(user)
+                            .build();
+                })
+                .orElseThrow(() -> new TokenRefreshException("Invalid refresh token"));
+    }
+
+    /*
+     Get refresh token for a user.
+     Returns the refresh token string to be set in httpOnly cookie.
+    */
+    public String getRefreshToken(String username) {
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(username);
+        return refreshToken.getToken();
+    }
+
+    /*
+     Logout user by deleting their refresh token.
+    */
+    public void logout(String username) {
+        User user = userRepository.findByUserName(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        refreshTokenService.deleteByUser(user);
     }
 }
